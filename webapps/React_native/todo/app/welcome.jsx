@@ -1,6 +1,6 @@
 import React, { useState, useEffect,View } from "react";
 import { Text } from "react-native";
-
+import { createClient } from "@supabase/supabase-js";
 
 
 

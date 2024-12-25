@@ -16,6 +16,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.todo"
+
+
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +31,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.437662742223-f4fsv3oivtft2slr2r24tb1doftphi7j"
+        }
+      ]
     ]
   }
 }

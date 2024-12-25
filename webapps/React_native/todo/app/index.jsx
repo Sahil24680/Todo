@@ -1,91 +1,110 @@
-import { Link } from "expo-router";
-import React, { useState, useEffect } from "react";
-import { StatusBar } from "expo-status-bar";
-import { Text, View, TextInput, Alert, Pressable } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Welcome from "./welcome"; // Adjust the path if necessary
+import React, { useEffect } from "react";
+import { View, TouchableOpacity, Text, StyleSheet, Alert } from "react-native";
+import * as Google from "expo-auth-session/providers/google";
+import * as WebBrowser from "expo-web-browser";
+import { useRouter,Stack } from "expo-router";
+import supabase from "./supabaseClient"; 
+WebBrowser.maybeCompleteAuthSession();
 
+export default function GoogleSignIn() {
+  // Configure Google Sign-In with your credentials
+  const router = useRouter(); 
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    iosClientId: "437662742223-f4fsv3oivtft2slr2r24tb1doftphi7j.apps.googleusercontent.com", // iOS Client ID from Google Cloud Console
+    redirectUri: "com.googleusercontent.apps.437662742223-f4fsv3oivtft2slr2r24tb1doftphi7j:/auth", // Redirect URI specific for iOS
+    scopes: ["profile", "email"], // Permissions to access the user's profile and email
+  });
 
-import "../global.css";
-
-export default function App() {
-  const [inputValue, setInputValue] = useState(""); // this is for the input field to add toods to the array below
-  const [todos, setTodos] = useState([]); // an array to hold and add the todos
-
-  // gets all the sotred data in te async sotrage when u open the app orginally
+  // Runs whenever the Google Sign-In response changes
   useEffect(() => {
-    const loadTodos = async () => {
-      try {
-        const storedTodos = await AsyncStorage.getItem("todos");
-        if (storedTodos) {// if theres todos data
-          setTodos(JSON.parse(storedTodos)); // Load todos into the todos array by converting jason string to a todo Object.
+    if (response?.type === "success") {
+      // If the sign-in is successful
+      const { authentication } = response;
+      const { idToken } = authentication; // extracts idToken
+  
+      const authenticateWithSupabase = async () => {
+        const { data, error } = await supabase.auth.signInWithIdToken({//signs in user with google id token
+          provider: "google",
+          token: idToken, // Pass the ID token
+        });
+  
+        if (error) {
+          console.error("Supabase login error:", error.message); //for debugging
+          Alert.alert("Error", "Failed to log in to Supabase.");
+          return; // Exit if there's an error
         }
-      } catch (error) {
-        Alert.alert("Error loading todos", error.message);
-      }
-    };
-
-    loadTodos();// used to call the fucntion
-  }, []);
-
-  // Save todos to AsyncStorage whenever theres a change in the todos array.
-  useEffect(() => {
-    const saveTodos = async () => {
-      try {
-        await AsyncStorage.setItem("todos", JSON.stringify(todos)); // Save todos to AsyncStorage
-      } catch (error) {
-        Alert.alert("Error saving todos", error.message);
-      }
-    };
-
-    saveTodos();
-  }, [todos]); //This tells useeffect wt to look at for changes
-
-  const addTodo = (inputValue) => {
-    if (!inputValue.trim()) {// checks if input is empty
-      return; 
+  
+        //console.log("Supabase login successful:", data); 
+        //console.log("data:",data.user.id)
+  
+        router.replace("/home"); // Redirect to Home only on success
+      };
+  
+      authenticateWithSupabase(); // Call the authentication function
+      //console.log("Authentication Response:", response); // response for debugging
+    } else if (response?.type === "error") {
+      // If the sign-in fails
+      Alert.alert("Error", "Login failed. Please try again."); // Notifies the user
+      console.log("Authentication Error:", response?.error); // Log the error for debugging
     }
-    const newTodo = {
-      id: Math.random().toString(36).slice(2, 11), // create random id
-      text: inputValue.trim(),// gets rid of all spaces
-    };
-    setTodos([...todos, newTodo]);
-    setInputValue("");
-  };
-  const deleteTodo = (id_to_delete) => {
-    const updatedTodos = todos.filter((todo) => todo.id !== id_to_delete);
-    setTodos(updatedTodos); // Update state with the filtered array
-  };
+  }, [response]); // This runs whenever the `response` changes
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   return (
-    <View className="flex-1 justify-center items-center bg-white">
-            <Welcome />
-      <TextInput
-      
-        className="w-3/4 p-4 border border-gray-300 rounded-lg bg-gray-100" //tailwind css
-        placeholder="Enter a task..." // Placeholder text
-        value={inputValue} // Value linked to state
-        onChangeText={(input) => setInputValue(input)}
-        onSubmitEditing={() => addTodo(inputValue)} // when enter or return is pressed it will add wtv is in ur current input box if its not empty
-      />
-      {/* the slice() creates a copy of the array and the revesre() reverses that array and map() loops through the reversed array */}
-      {todos.slice().reverse().map((todo,index ) => (//this is used to loop through all the tasks in todos array
-            <View
-              className="w-3/4 flex flex-row justify-between items-center p-4 border border-gray-300 rounded-lg bg-gray-100 mb-2"
-              key={todo.id}
-            >
-              <Text className="text-lg text-gray-700">{todo.text}</Text>
-
-              {/* The delete Button */}
-              <Pressable
-                onPress={() => deleteTodo(todo.id)}
-                className="bg-red-500 px-2 py-1 rounded-md"
-              >
-                <Text className="text-white font-bold">Delete</Text>
-              </Pressable>
-            </View>
-          )
-        )}
+    <>
+   
+    <View style={styles.container}>
+      {/* Button to trigger Google Sign-In */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => {
+          if (request) {
+            promptAsync(); // Start the Google Sign-In process
+          } else {
+            console.log("OAuth request is not ready yet."); // Log if the request is not initialized
+          }
+        }}
+      >
+        <Text style={styles.buttonText}>Sign in with Google</Text>
+      </TouchableOpacity>
     </View>
+    </>
   );
+
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f9f9f9", 
+  },
+  button: {
+    backgroundColor: "#4285F4", 
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    alignItems: "center", 
+  },
+  buttonText: {
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "bold", 
+  },
+});
